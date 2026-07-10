@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuite name="verdx" tests="1" failures="0" errors="0" skipped="0" timestamp="2026-04-30T12:00:00Z">
+  <properties>
+    <property name="run_id" value="run-001" />
+    <property name="target_key" value="sample/ch04/ge01" />
+    <property name="target_content_hash" value="sha256:abc123" />
+    <property name="coverage_status" value="full" />
+    <property name="confidence" value="strong" />
+    <property name="score" value="100" />
+    <property name="junit_semantics" value="observations-as-failures; coverage/recovery/subject-debt-as-errors" />
+  </properties>
+  <testcase classname="verdx.assessment" name="assessment clean" />
+</testsuite>

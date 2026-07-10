@@ -1,0 +1,38 @@
+{
+  "checks_passed": 20,
+  "checks_run": 20,
+  "confidence": "strong",
+  "coverage_gaps": [],
+  "coverage_status": "full",
+  "escalation_summary": {
+    "counts": {},
+    "highest": "L0"
+  },
+  "observations": [],
+  "recovery_items": [],
+  "run_id": "run-001",
+  "schema_version": "verdx.assessment.v1",
+  "score": {
+    "coverage_penalty": 0,
+    "dimension_scores": {},
+    "escalation_distribution": {},
+    "independence_penalty": 0,
+    "observation_count": 0,
+    "overall": 100
+  },
+  "target_content_hash": "sha256:abc123",
+  "target_key": "sample/ch04/ge01",
+  "timestamp": "2026-04-30T12:00:00Z",
+  "validator_statuses": [
+    {
+      "checks_passed": 20,
+      "checks_run": 20,
+      "duration_ms": 150,
+      "observation_count": 0,
+      "status": "completed",
+      "validator_id": "yaml-lint",
+      "validator_version": "1.0.0"
+    }
+  ],
+  "validators_clean": 1
+}

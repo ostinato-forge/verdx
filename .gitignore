@@ -1,0 +1,37 @@
+# Sensitive files
+.env
+*.key
+*.pem
+.remember/
+.claude/
+
+# Working docs (local only)
+.work/
+docs/
+
+# Flywheel data lives in a separate verdx-data repository
+data/flywheel/
+
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Dev/test
+.venv/
+.tox/
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

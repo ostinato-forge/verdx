@@ -1,0 +1,21 @@
+{
+  "schema_version": "verdx.assessment.v1",
+  "score": {"overall": 92},
+  "checks_run": 150,
+  "checks_passed": 142,
+  "coverage_status": "full",
+  "domain": "training",
+  "observations": [
+    {
+      "rule_id": "broken_xref",
+      "location": "lecture.adoc",
+      "severity": "high",
+      "summary": "Cross-reference target not found",
+      "category": "structure",
+      "issue_fingerprint": "xref:missing-target",
+      "evidence": [
+        {"details": "Target anchor \"_lab_setup\" not found", "data": {"auto_fixable": true}}
+      ]
+    }
+  ]
+}

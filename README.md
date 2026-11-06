@@ -1,5 +1,7 @@
 # verdx
 
+> **Status:** The engine, the bundled gates, and the CLI run from a fresh clone, with 2,074 passing tests. No published package yet, and the flywheel data directory is not included. Maintained; carved out of a larger private engine in September 2026.
+
 ![CI](https://github.com/ostinato-forge/verdx/actions/workflows/ci.yml/badge.svg?branch=main)
 
 Deterministic verification engine with pluggable domain gates. You point it at a target, it runs the gate's checks, and it returns a scored verdict: pass or block. The same input produces the same verdict every time.

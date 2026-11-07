@@ -12,7 +12,7 @@ from verdx.simple import simple_validator
 _HEADING = re.compile(r"^(#{1,6})\s+\S")
 
 
-@simple_validator(id="md-headings", version="1.0.0", category="structure")
+@simple_validator(id="md-headings", version="1.0.0", category="structure", file_suffix=".md")
 def check_headings(target: Path) -> list[str]:
     """Check heading hierarchy hygiene in all Markdown files under target."""
     issues: list[str] = []

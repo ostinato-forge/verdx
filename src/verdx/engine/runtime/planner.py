@@ -25,6 +25,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal
 
+from verdx._content import compute_content_hash
 from verdx.contracts.plan import (
     CapabilityPolicy,
     PlanError,
@@ -41,7 +42,6 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-_MAX_HASH_FILE_SIZE = 10_485_760
 
 _SECRET_KEY_PATTERN = re.compile(
     r"(secret|password|token|api[_-]?key|credential|private[_-]?key)",
@@ -52,43 +52,6 @@ _SECRET_KEY_PATTERN = re.compile(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-
-
-def compute_content_hash(target: Path) -> str:
-    """Compute a SHA-256 content hash for a file or directory."""
-    h = hashlib.sha256()
-    if target.is_file():
-        try:
-            file_size = target.stat().st_size
-        except OSError:
-            file_size = 0
-        if file_size > _MAX_HASH_FILE_SIZE:
-            h.update(str(target).encode())
-            h.update(file_size.to_bytes(8, "little"))
-        else:
-            with target.open("rb") as f:
-                while chunk := f.read(65536):
-                    h.update(chunk)
-    elif target.is_dir():
-        for p in sorted(target.rglob("*")):
-            if p.is_symlink():
-                continue
-            rel = p.relative_to(target)
-            if any(part.startswith(".") for part in rel.parts):
-                continue
-            if p.is_file():
-                h.update(str(p.relative_to(target)).encode())
-                try:
-                    file_size = p.stat().st_size
-                except OSError:
-                    continue
-                if file_size > _MAX_HASH_FILE_SIZE:
-                    h.update(file_size.to_bytes(8, "little"))
-                else:
-                    with p.open("rb") as f:
-                        while chunk := f.read(65536):
-                            h.update(chunk)
-    return f"sha256:{h.hexdigest()[:16]}"
 
 
 def resolve_gate_plan(

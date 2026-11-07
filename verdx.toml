@@ -1,0 +1,43 @@
+version = 1
+include = [
+    "src/**", "tests/**", "examples/**", ".github/**",
+    "README.md", "CONTRIBUTING.md", "PROVENANCE.md", "CLAUDE.md",
+    "pyproject.toml", "uv.lock", "Makefile", "verdx.toml", ".gitignore",
+]
+
+[[checks]]
+id = "lint"
+command = ["uv", "run", "--locked", "ruff", "check", "src/", "tests/", "examples/"]
+version_command = ["uv", "run", "--locked", "ruff", "--version"]
+
+[[checks]]
+id = "format"
+command = ["uv", "run", "--locked", "ruff", "format", "--check", "src/", "tests/", "examples/"]
+version_command = ["uv", "run", "--locked", "ruff", "--version"]
+
+[[checks]]
+id = "types"
+command = ["uv", "run", "--locked", "mypy", "--package", "verdx"]
+version_command = ["uv", "run", "--locked", "mypy", "--version"]
+
+[[checks]]
+id = "tests"
+command = ["uv", "run", "--locked", "python", "-m", "pytest", "--tb=short", "-q"]
+version_command = ["uv", "run", "--locked", "python", "-m", "pytest", "--version"]
+not_applicable_codes = [5]
+timeout = 600
+
+[[checks]]
+id = "readme"
+domain = "markdown"
+target = "README.md"
+
+[[checks]]
+id = "contributing"
+domain = "markdown"
+target = "CONTRIBUTING.md"
+
+[[checks]]
+id = "provenance"
+domain = "markdown"
+target = "PROVENANCE.md"

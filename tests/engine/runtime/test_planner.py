@@ -82,7 +82,7 @@ class TestComputeContentHash:
         f.write_text("hello world")
         h = compute_content_hash(f)
         assert h.startswith("sha256:")
-        assert len(h) == len("sha256:") + 16
+        assert len(h) == len("sha256:") + 64
 
     def test_directory_hash(self, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("aaa")
@@ -106,14 +106,14 @@ class TestComputeContentHash:
         f2.write_text("two")
         assert compute_content_hash(f1) != compute_content_hash(f2)
 
-    def test_skips_dotfiles_in_directory(self, tmp_path: Path) -> None:
+    def test_includes_hidden_source_in_directory(self, tmp_path: Path) -> None:
         (tmp_path / "visible.txt").write_text("data")
         (tmp_path / ".hidden").write_text("secret")
         h1 = compute_content_hash(tmp_path)
 
         (tmp_path / ".hidden").write_text("changed")
         h2 = compute_content_hash(tmp_path)
-        assert h1 == h2
+        assert h1 != h2
 
     def test_skips_dot_directory_contents(self, tmp_path: Path) -> None:
         (tmp_path / "visible.txt").write_text("data")

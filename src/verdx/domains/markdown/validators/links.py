@@ -12,7 +12,7 @@ from verdx.simple import simple_validator
 _LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 
-@simple_validator(id="md-links", version="1.0.0", category="links")
+@simple_validator(id="md-links", version="1.0.0", category="links", file_suffix=".md")
 def check_links(target: Path) -> list[str]:
     """Check that relative links resolve and stay inside the target root."""
     issues: list[str] = []

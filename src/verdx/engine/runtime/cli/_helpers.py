@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
+from verdx._content import compute_content_hash
 from verdx.contracts.assessment import AssessmentConfidence
 from verdx.contracts.dimensions import CoverageStatus
 from verdx.engine.lifecycle.transitions import resolve_transition
@@ -289,36 +290,7 @@ def _actor_facts_from_entry(entry: ActorEntry) -> ActorFacts:
 
 
 def _compute_content_hash(target_path: Path) -> str:
-    h = hashlib.sha256()
-    if target_path.is_file():
-        try:
-            file_size = target_path.stat().st_size
-        except OSError:
-            file_size = 0
-        if file_size > _MAX_HASH_FILE_SIZE:
-            h.update(str(target_path).encode())
-            h.update(file_size.to_bytes(8, "little"))
-        else:
-            with target_path.open("rb") as f:
-                while chunk := f.read(65536):
-                    h.update(chunk)
-    elif target_path.is_dir():
-        for p in sorted(target_path.rglob("*")):
-            if p.is_symlink():
-                continue
-            if p.is_file() and not p.name.startswith("."):
-                h.update(str(p.relative_to(target_path)).encode())
-                try:
-                    file_size = p.stat().st_size
-                except OSError:
-                    continue
-                if file_size > _MAX_HASH_FILE_SIZE:
-                    h.update(file_size.to_bytes(8, "little"))
-                else:
-                    with p.open("rb") as f:
-                        while chunk := f.read(65536):
-                            h.update(chunk)
-    return f"sha256:{h.hexdigest()[:16]}"
+    return compute_content_hash(target_path)
 
 
 def _resolve_validate_output_format(

@@ -47,7 +47,6 @@ class TestCLIStructure:
             "open",
             "status",
             "run",
-            "check",
             "approve",
             "quick",
             "override",

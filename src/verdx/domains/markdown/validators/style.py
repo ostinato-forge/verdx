@@ -9,7 +9,7 @@ from verdx.domains.markdown.validators._paths import display_rel
 from verdx.simple import simple_validator
 
 
-@simple_validator(id="md-style", version="1.0.0", category="style")
+@simple_validator(id="md-style", version="1.0.0", category="style", file_suffix=".md")
 def check_style(target: Path) -> list[str]:
     """Check whitespace hygiene in all Markdown files under target."""
     issues: list[str] = []

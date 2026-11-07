@@ -2,7 +2,10 @@
 
 ## What this is
 
-`verdx` is a deterministic verification engine with pluggable domain gates. It runs a gate's checks against a target and returns a scored verdict (`pass` or `block`) with a decision hash. Single package, single `verdx` namespace.
+`verdx check` runs a project's required and advisory checks from `verdx.toml`.
+It saves replayable evidence and returns pass, fail, incomplete, or not applicable.
+`verdx replay` verifies that evidence without running commands. The existing
+`validate`, `fix`, and `drive` commands use scored domain assessments.
 
 ## Layout
 
@@ -10,7 +13,9 @@ Everything lives under `src/verdx/`:
 
 ```
 src/verdx/
-├── api.py, cli.py          # Porcelain API and 3-command CLI (validate/fix/drive)
+├── api.py, cli.py          # Public API and CLI
+├── acceptance/            # Project policy, command execution, receipts, replay
+├── _content.py            # Shared full content digests and input manifests
 ├── types.py, translate.py  # Porcelain types, engine-to-porcelain translation
 ├── simple.py               # @simple_validator, @simple_fixer decorators
 ├── fixers.py, fix_loop.py  # Fixer discovery and bounded repair loop
@@ -52,7 +57,7 @@ from verdx.engine.runtime.engine import run_validation
 
 ```bash
 # Install in development mode
-uv sync
+uv sync --locked --extra dev
 
 # Run all tests
 uv run python -m pytest tests/ -v
@@ -73,6 +78,8 @@ uv run verdx fix <target> --dry-run
 ```
 
 `make check` runs lint, typecheck, and tests together.
+`make acceptance` runs those checks and documentation checks through Verdx,
+with a retained receipt for each attempt. CI uses this acceptance policy.
 
 ## Conventions
 
@@ -86,4 +93,12 @@ uv run verdx fix <target> --dry-run
 
 ## Key principle
 
-**The verdict path is deterministic.** Scoring and the verdict never depend on a network call, so the same input produces the same verdict and the same decision hash every time. The flywheel enriches context but never enters the verdict path. Gate authors build against `verdx.contracts`; the engine under `verdx.engine` is internal and enforced by contract tests.
+**Derive the verdict from recorded evidence.** Acceptance checks distinguish
+failure, missing evidence, and no applicable work. Required failures cannot be
+averaged into a passing score. Replay uses only the saved policy and evidence;
+it never executes commands. Keep earlier failed or incomplete attempts intact.
+
+Acceptance does not load learning-store overrides. Domain assessment hashes use
+`verdx.decision.v2`; source manifests use `verdx.content.v2`. Hash changes require
+explicit versioning and compatibility tests. Gate authors build against
+`verdx.contracts`; the engine is internal.

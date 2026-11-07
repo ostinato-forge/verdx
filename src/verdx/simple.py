@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING
 
 from verdx.contracts.dimensions import Confidence, DimLevel, Severity
 from verdx.contracts.observation import ObservationDraft
+from verdx.contracts.paths import iter_target_files
 from verdx.contracts.validator import ValidationContext, ValidatorResult
 from verdx.fixers import FixerSpec
 from verdx.types import FixAction, Observation
@@ -50,12 +51,27 @@ class SimpleValidatorWrapper:
     severity: Severity
     confidence: Confidence
     fn: Callable[[Path], list[str]]
+    file_suffix: str | None = None
 
     def __call__(self, context: ValidationContext) -> ValidatorResult:
         start = time.monotonic()
         target = Path(context.target_path)
 
         try:
+            if (
+                self.file_suffix is not None
+                and next(iter_target_files(target, self.file_suffix), None) is None
+            ):
+                return ValidatorResult(
+                    validator_id=self.validator_id,
+                    validator_version=self.validator_version,
+                    drafts=[],
+                    checks_run=0,
+                    checks_passed=0,
+                    duration_ms=0,
+                    status="skipped",
+                    skip_reason=f"no applicable {self.file_suffix} files",
+                )
             messages = self.fn(target)
         except Exception as exc:
             elapsed = int((time.monotonic() - start) * 1000)
@@ -104,6 +120,7 @@ def simple_validator(
     category: str,
     severity: str = "medium",
     confidence: str = "confirmed",
+    file_suffix: str | None = None,
 ) -> Callable[[Callable[[Path], list[str]]], SimpleValidatorWrapper]:
     """Decorator that turns a function into a Validator.
 
@@ -119,6 +136,7 @@ def simple_validator(
             severity=Severity(severity),
             confidence=Confidence(confidence),
             fn=fn,
+            file_suffix=file_suffix,
         )
         # Adopt the wrapped function's identity so ``check_from_validator``
         # (which reads ``__module__``/``__qualname__``) builds an import path

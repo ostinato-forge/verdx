@@ -15,9 +15,9 @@ jobs:
         with:
           version: "latest"
           python-version: "3.13"
-      - run: uv sync --extra dev
-      - run: uv run ruff check src/ tests/
-      - run: uv run ruff format --check src/ tests/
+      - run: uv sync --locked --extra dev
+      - run: uv run --locked ruff check src/ tests/ examples/
+      - run: uv run --locked ruff format --check src/ tests/ examples/
 
   typecheck:
     runs-on: ubuntu-latest
@@ -27,8 +27,8 @@ jobs:
         with:
           version: "latest"
           python-version: "3.13"
-      - run: uv sync --extra dev
-      - run: uv run mypy --package verdx
+      - run: uv sync --locked --extra dev
+      - run: uv run --locked mypy --package verdx
 
   test:
     runs-on: ubuntu-latest
@@ -38,13 +38,14 @@ jobs:
         with:
           version: "latest"
           python-version: "3.13"
-      - run: uv sync --extra dev
-      - run: uv run python -m pytest --tb=short -q
+      - run: uv sync --locked --extra dev
+      - name: Project acceptance
+        run: uv run --locked verdx check . --output text
       - name: Coverage summary
         if: always()
         run: |
           echo "## Coverage" >> "$GITHUB_STEP_SUMMARY"
-          uv run coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+          uv run --locked coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
 
   gitleaks:
     runs-on: ubuntu-latest

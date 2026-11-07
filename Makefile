@@ -1,13 +1,16 @@
-.PHONY: test lint typecheck check
+.PHONY: test lint typecheck check acceptance
 
 test:
-	uv run python -m pytest --tb=short -q
+	uv run --locked python -m pytest --tb=short -q
 
 lint:
-	uv run ruff check src/ tests/
-	uv run ruff format --check src/ tests/
+	uv run --locked ruff check src/ tests/ examples/
+	uv run --locked ruff format --check src/ tests/ examples/
 
 typecheck:
-	uv run mypy --package verdx
+	uv run --locked mypy --package verdx
 
 check: lint typecheck test
+
+acceptance:
+	uv run --locked verdx check . --output text

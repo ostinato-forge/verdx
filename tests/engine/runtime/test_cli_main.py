@@ -45,12 +45,10 @@ class TestComputeContentHash:
         # Should be stable
         assert hash1 == hash2
         assert hash1.startswith("sha256:")
-        assert len(hash1) == 23  # "sha256:" + 16 hex chars
+        assert len(hash1) == 71  # "sha256:" + 64 hex chars
 
-    def test_file_exceeding_size_limit_handled_without_reading_content(
-        self, tmp_path: Path
-    ) -> None:
-        """Test that a file exceeding the size limit is handled without reading full content."""
+    def test_file_above_old_size_limit_has_full_digest(self, tmp_path: Path) -> None:
+        """A file above the old size limit still has a complete digest."""
         # Create a file larger than the limit
         large_file = tmp_path / "large.bin"
         file_size = _MAX_HASH_FILE_SIZE + 1
@@ -63,7 +61,7 @@ class TestComputeContentHash:
         hash_result = _compute_content_hash(large_file)
 
         assert hash_result.startswith("sha256:")
-        assert len(hash_result) == 23
+        assert len(hash_result) == 71
 
     def test_single_large_file_produces_hash(self, tmp_path: Path) -> None:
         """Test that a single large file still produces a hash (doesn't crash)."""
@@ -77,10 +75,10 @@ class TestComputeContentHash:
         hash_result = _compute_content_hash(large_file)
 
         assert hash_result.startswith("sha256:")
-        assert len(hash_result) == 23
+        assert len(hash_result) == 71
 
-    def test_symlinks_skipped(self, tmp_path: Path) -> None:
-        """Test that symlinks are still skipped."""
+    def test_symlinks_recorded(self, tmp_path: Path) -> None:
+        """Record links without following their targets."""
         # Create a file and a symlink
         real_file = tmp_path / "real.txt"
         real_file.write_text("real content")
@@ -93,13 +91,13 @@ class TestComputeContentHash:
         # Should produce a hash
         assert hash_result.startswith("sha256:")
 
-        # Verify symlink is not hashed by comparing to directory without symlink
+        # The presence of the link changes the input manifest.
         other_dir = tmp_path / "other"
         other_dir.mkdir()
         (other_dir / "real.txt").write_text("real content")
 
         hash_without_symlink = _compute_content_hash(other_dir)
-        assert hash_result == hash_without_symlink
+        assert hash_result != hash_without_symlink
 
     def test_directory_with_mixed_file_sizes(self, tmp_path: Path) -> None:
         """Test directory with both small and large files."""
@@ -115,14 +113,14 @@ class TestComputeContentHash:
         hash_result = _compute_content_hash(tmp_path)
 
         assert hash_result.startswith("sha256:")
-        assert len(hash_result) == 23
+        assert len(hash_result) == 71
 
     def test_empty_directory(self, tmp_path: Path) -> None:
         """Test that an empty directory produces a hash."""
         hash_result = _compute_content_hash(tmp_path)
 
         assert hash_result.startswith("sha256:")
-        assert len(hash_result) == 23
+        assert len(hash_result) == 71
 
     def test_small_file_content_matters(self, tmp_path: Path) -> None:
         """Test that for small files, content changes produce different hashes."""
@@ -160,8 +158,8 @@ class TestComputeContentHash:
         # Different sizes should produce different hashes (even if content differs)
         assert hash1 != hash2
 
-    def test_hidden_files_skipped(self, tmp_path: Path) -> None:
-        """Test that files starting with . are skipped."""
+    def test_hidden_source_files_included(self, tmp_path: Path) -> None:
+        """Hidden source files are part of the content identity."""
         (tmp_path / "visible.txt").write_text("visible")
         (tmp_path / ".hidden").write_text("hidden")
 
@@ -173,7 +171,7 @@ class TestComputeContentHash:
         (other_dir / "visible.txt").write_text("visible")
 
         hash_without_hidden = _compute_content_hash(other_dir)
-        assert hash_result == hash_without_hidden
+        assert hash_result != hash_without_hidden
 
     def test_single_large_file_path_affects_hash(self, tmp_path: Path) -> None:
         """Two large files of the same size at different paths produce different hashes."""
@@ -200,7 +198,7 @@ class TestComputeContentHash:
         hash_result = _compute_content_hash(exact_file)
 
         assert hash_result.startswith("sha256:")
-        assert len(hash_result) == 23
+        assert len(hash_result) == 71
 
         # Verify content is actually hashed (not just size)
         other_file = tmp_path / "other.bin"

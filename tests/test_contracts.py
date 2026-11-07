@@ -56,7 +56,14 @@ def test_verdx_never_imports_forbidden_packages() -> None:
 
 class TestCLISurfaceContract:
     def test_cli_commands(self) -> None:
-        assert set(main.commands.keys()) == {"validate", "fix", "drive", "flywheel"}
+        assert set(main.commands.keys()) == {
+            "check",
+            "replay",
+            "validate",
+            "fix",
+            "drive",
+            "flywheel",
+        }
 
     def test_validate_has_required_options(self) -> None:
         runner = CliRunner()

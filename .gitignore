@@ -28,6 +28,7 @@ build/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.verdx/
 htmlcov/
 
 # IDE

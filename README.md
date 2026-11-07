@@ -1,107 +1,201 @@
 # verdx
 
-> **Status:** The engine, the bundled gates, and the CLI run from a fresh clone, with 2,074 passing tests. No published package yet, and the flywheel data directory is not included. Maintained; carved out of a larger private engine in September 2026.
+Verdx checks whether work meets a project's acceptance rules. It runs the checks
+you name, records what happened, and returns `pass`, `fail`, `incomplete`, or
+`not_applicable`. Required checks decide acceptance. Advisory checks stay visible.
 
 ![CI](https://github.com/ostinato-forge/verdx/actions/workflows/ci.yml/badge.svg?branch=main)
 
-Deterministic verification engine with pluggable domain gates. You point it at a target, it runs the gate's checks, and it returns a scored verdict: pass or block. The same input produces the same verdict every time.
+The project includes a Python engine, a command-line tool, and Markdown plugins.
+It is an early implementation installed from source. It has not been published
+as a package.
 
-## What it does
+## Install and check this repository
 
-verdx separates two jobs that are usually tangled together. Checks decide what to look for. The engine decides what the findings mean. A gate contributes checks and a scoring policy; the engine runs the checks, scores the findings, and produces one verdict with a decision hash. That hash is a fingerprint of the assessment, so two runs that reach the same verdict on the same content are provably the same decision.
-
-Three things make up a run:
-
-- **Scored verdict.** Every finding carries a severity and a set of dimensions. The engine scores them against the gate's policy and emits a single verdict (`pass` or `block`) plus a numeric score. Nothing in the verdict path reaches out to a network service, so the verdict is reproducible.
-- **Decision hash.** The assessment is hashed into a short, stable identifier. Rerun on unchanged content and you get the same hash. Change the content and the hash changes with it.
-- **Bounded auto-fix.** For findings that have a mechanical repair, a gate can register a fixer. verdx applies fixers in a bounded loop and re-validates after each pass. It never treats a target as fixed on its own say-so; the verdict decides.
-
-## Install
+Python 3.13 or later is required. Command execution is tested on Linux.
 
 ```bash
-uv sync
+git clone https://github.com/ostinato-forge/verdx.git
+cd verdx
+uv sync --locked --extra dev
+uv run verdx check . --output text
 ```
 
-## Commands
+The included [verdx.toml](verdx.toml) runs lint, formatting, type checks, tests,
+and documentation checks. Each attempt saves its policy, input file digests,
+checker output, and decision under `.verdx/runs/<run-id>/`.
+The CI test job runs this policy. Local receipts remain available until you
+remove them; CI receipts remain on the runner for that job only.
+The [acceptance example](examples/acceptance/README.md) demonstrates failure,
+repair, recheck, and replay using a small local project.
 
-verdx has three commands.
+## Add acceptance rules to a project
 
-### validate
+Create `verdx.toml` in the project directory:
 
-Run the gate against one or more targets and print the verdict.
+```toml
+version = 1
+include = ["src/**", "tests/**", "README.md", "pyproject.toml", "uv.lock", "verdx.toml"]
+
+[[checks]]
+id = "tests"
+command = ["uv", "run", "--locked", "pytest", "-q"]
+version_command = ["uv", "run", "--locked", "pytest", "--version"]
+timeout = 300
+not_applicable_codes = [5]
+
+[[checks]]
+id = "readme"
+domain = "markdown"
+target = "README.md"
+
+[[checks]]
+id = "style-advice"
+command = ["uv", "run", "--locked", "ruff", "check", "src/"]
+required = false
+```
+
+Then run:
 
 ```bash
-# Validate a target (static plus live checks)
-verdx validate /path/to/target
-
-# Static checks only, no live checks
-verdx validate /path/to/target --static-only
-
-# JSON output (auto-selected when piped)
-verdx validate /path/to/target --output json
+uv run verdx check /path/to/project --output text
 ```
 
-The exit code is `0` when every target passes and `1` when any target is blocked.
+Commands are argument lists, executed from the project root without a shell.
+They run with your account's permissions. Use a policy and commands you trust.
+The runner does not install tools or treat command output as an instruction.
 
-### fix
+Checks are required unless `required = false`. Command exit code 0 means pass,
+1 means failure, and any other code means incomplete execution by default.
+`success_codes`, `failure_codes`, and `not_applicable_codes` declare a tool's
+exit-code contract. These lists cannot overlap. Pytest uses 5 when it collects
+no tests.
 
-Apply the gate's registered fixers to a target, then re-validate.
+`paths = ["**/*.md"]` runs a check only when an input file matches. It controls
+whether the check applies; it does not change the command's arguments.
+
+`version_command` records a tool's reported version. If the probe fails, the
+check is incomplete. If you omit it, no tool version is inferred. Include
+lockfiles and checker source in the input scope when they affect the result.
+
+## Outcomes and exit codes
+
+| Outcome | Exit code | Meaning |
+| --- | --- | --- |
+| `pass` | 0 | Every required check completed and passed. |
+| `fail` | 1 | A required check found a failure. Other coverage gaps remain visible. |
+| `incomplete` | 2 | Required evidence is missing, a command could not finish, or inputs changed. |
+| `not_applicable` | 3 | No required check evaluated applicable work. |
+
+Coverage describes required checks separately from their results. A failed test
+is complete evidence of failure. A timed-out test is incomplete evidence. If some
+required checks pass and another reports no tests or no matching files, the
+result is incomplete.
+A domain can report a failure and incomplete coverage together. Both remain
+visible in the decision and in that check's result.
+
+Acceptance checks do not average failures into a passing score. Any domain
+finding above informational severity fails its check. A domain that could not
+complete its checks is incomplete. Domain checks run with live checks disabled;
+a skipped live check remains a coverage gap.
+
+Output is JSON when piped and text in a terminal. `--output` selects either
+format. Progress goes to stderr, so stdout remains parseable JSON.
+
+## Replay saved evidence
+
+Use the receipt path printed by `check`:
 
 ```bash
-# Apply mechanical fixes in place
-verdx fix /path/to/target
-
-# Show what would change without touching files
-verdx fix /path/to/target --dry-run
+uv run verdx replay .verdx/runs/<run-id>/receipt.json --output text
 ```
 
-### drive
+Replay verifies saved artifact digests, reads the saved policy, and recomputes
+the decision. It does not rerun commands, access the original target, or contact
+network services. Copy the complete run directory to move the evidence elsewhere.
+Replay returns the original decision's exit code. Replaying a failed run exits 1.
 
-Hold the loop while a fix command you supply repairs the target. verdx validates, and while the verdict is `block` it hands the findings to your fix command on stdin, then re-validates. It exits `0` only when the verdict reaches `pass`. The loop is bounded by `--max-iterations`.
+Each attempt gets its own directory. Later success leaves earlier failed and
+incomplete attempts intact. Timeouts stop the command's process group on POSIX
+systems and retain available output. An output limit stops the command and
+records an incomplete result instead of silently discarding evidence.
+
+The decision hash includes the policy, input manifests, runtime and checker
+evidence, artifact digests, coverage, and verdict. Receipt run IDs, timestamps,
+and measured command durations are excluded. Saved output remains part of its
+artifact digest, including any timestamps a checker prints. Identical saved
+evidence produces the same decision hash. A fresh run can produce a different
+hash if its logs or environment differ.
+
+Receipts are unsigned local records. Replay checks internal consistency. It does
+not prove who produced a record or defend against someone rewriting both a
+record and its hashes. Independent merge enforcement and signing belong in a
+trusted CI integration, such as [Siglum](https://github.com/siglum-dev/siglum).
+
+## What the input digest covers
+
+`include` defaults to all source files. `exclude` removes explicit patterns.
+File paths, executable flags, and all file bytes contribute to the manifest.
+Hidden source files are included. Contents are streamed, including files larger
+than 10 MiB. Changes between the initial and final snapshots make a run incomplete.
+
+Known generated directories are excluded: `.git`, `.verdx`, `.venv`, `.tox`,
+`.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.hypothesis`, `__pycache__`,
+`node_modules`, `htmlcov`, `dist`, `build`, `.eggs`, and directories ending in
+`.egg-info`. Python bytecode and `.coverage` files are also excluded. This is a
+fixed list, not a complete implementation of `.gitignore`.
+
+Acceptance checks reject symlinks in their declared input scope. Use regular
+source files in that scope. The policy itself is always saved and checked for
+changes, even when it is outside the input patterns.
+
+A snapshot covers the declared local files. It does not freeze remote services,
+the whole environment, or files a command reads outside that scope. A passing
+command proves only the condition that command actually tests.
+
+## Existing domain workflows
+
+The `validate`, `fix`, and `drive` commands retain the scored domain interface:
 
 ```bash
-verdx drive /path/to/target --fix-cmd "your-fix-command" --max-iterations 5
+uv run verdx validate README.md --domain markdown --no-flywheel
+uv run verdx fix README.md --domain markdown --dry-run --no-flywheel
+uv run verdx drive /path/to/target --fix-cmd "your-fix-command" --max-iterations 5
 ```
 
-The fix command never decides that the work is done. verdx re-validates after every pass and the verdict is the only thing that ends the loop.
+`validate` returns a scored `pass` or `block` assessment. Its profiles use score
+thresholds, so a finding can coexist with a passing score. Use `check` when a
+required rule must pass without findings and you need retained evidence.
 
-## Example gates
+`fix` applies registered mechanical repairs and revalidates. `drive` invokes an
+external repair command and revalidates after each attempt. Both loops are bounded.
 
-Two gates ship with verdx.
+The learning store can annotate domain runs and hold approved overrides. It is
+separate from acceptance receipts. Acceptance checks do not load its overrides.
+Use `--no-flywheel` to disable enrichment in the existing domain commands.
 
-| Gate | Checks |
+## Build a domain plugin
+
+| Domain | Checks |
 | --- | --- |
-| `markdown` | Heading structure, link validity, and style conventions in Markdown files. |
-| `example` | A single check (trailing blank lines), kept deliberately small as a copy-me template. |
+| `markdown` | Heading order, relative links, and whitespace in Markdown files. |
+| `example` | Trailing blank lines, as a small plugin template. |
 
-Gates are discovered through the `verdx.domains` entry-point group, so an installed gate is available without any extra wiring.
+Start with [the example domain](src/verdx/domains/example/__init__.py). Plugins
+register through the `verdx.domains` entry-point group. They supply checks and
+policy through `verdx.contracts`; they do not import the internal engine.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.
 
-## Build your own gate
+## Compatibility and source history
 
-`src/verdx/domains/example/` is the template. It is three files (`__init__.py`, `validators.py`, `fixers.py`) with every step commented, and it is the smallest thing the engine will accept as a gate.
+Domain decision hashes now use `verdx.decision.v2`. Content hashes use full
+SHA-256 digests over `verdx.content.v2` manifests. Old and new hashes are not
+interchangeable. Existing cached identities will miss and checks will rerun.
 
-The shape of a gate:
-
-1. **Write checks.** A check is a plain function decorated with `@simple_validator` that takes a target path and returns a list of findings. See `src/verdx/domains/example/validators.py`.
-2. **Register the gate.** A single `register_domain()` function returns a `DomainSpec` describing the gate's name, its checks, its scoring policy, and how it discovers subjects. See `src/verdx/domains/example/__init__.py`.
-3. **Optionally add fixers.** A fixer takes a finding and repairs it mechanically. See `src/verdx/domains/example/fixers.py`.
-4. **Point the entry point at it.** Add your gate to the `verdx.domains` group in `pyproject.toml`.
-
-Gate authors build against `verdx.contracts`, the stable public surface. Gates never import from `verdx.engine`, which is internal.
-
-The `markdown` gate under `src/verdx/domains/markdown/` is a fuller worked example: three validators split across files, a config package with profiles, and fixers.
-
-## Flywheel
-
-verdx keeps a learning layer, the flywheel, that records how findings were resolved so it can annotate later runs with that context. It never enters the verdict path; it only enriches. Flywheel data lives in a separate data directory, discovered next to the repo or set with `VERDX_FLYWHEEL_DATA`, and it falls back to a local directory when no shared one is present.
-
-```bash
-verdx flywheel list         # list stored patterns
-verdx flywheel sync         # commit and push flywheel data
-```
-
-Disable it for a single run with `--no-flywheel`.
+Acceptance receipts use `verdx.acceptance.v1`. Unknown receipt versions are
+rejected. See [PROVENANCE.md](PROVENANCE.md) for known source history and the
+remaining extraction-history gap.
 
 ## License
 
-Apache-2.0.
+Apache-2.0. See [LICENSE](LICENSE).

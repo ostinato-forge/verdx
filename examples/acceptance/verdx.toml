@@ -1,0 +1,7 @@
+version = 1
+include = ["value.txt", "verify.py", "repair.py", "verdx.toml"]
+
+[[checks]]
+id = "expected-value"
+command = ["python3", "verify.py"]
+version_command = ["python3", "--version"]

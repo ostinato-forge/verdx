@@ -13,6 +13,12 @@ def _base_inputs() -> dict:
         "observation_signatures": ["obs1", "obs2"],
         "override_signatures": [],
         "score": 85,
+        "threshold": 80,
+        "verdict": "pass",
+        "coverage_status": "full",
+        "confidence": "strong",
+        "validator_results": [],
+        "coverage_gaps": [],
     }
 
 

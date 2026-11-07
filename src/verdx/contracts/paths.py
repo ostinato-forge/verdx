@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from verdx._content import GENERATED_DIRECTORIES
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
@@ -60,6 +62,8 @@ def _walk_dir(directory: Path, suffix: str) -> Iterator[Path]:
             # either could escape the target root.
             continue
         if entry.is_dir():
+            if entry.name in GENERATED_DIRECTORIES or entry.name.endswith(".egg-info"):
+                continue
             yield from _walk_dir(entry, suffix)
         elif entry.is_file() and entry.name.endswith(suffix):
             yield entry

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from verdx._hash import compute_decision_hash
+from verdx._hash import DECISION_HASH_SCHEMA, compute_decision_hash
 from verdx.engine.validation.gate import passes_gate
 from verdx.types import Assessment, Observation
 
@@ -102,6 +102,15 @@ def translate_assessment(
         observation_signatures=[o.signature for o in translated],
         override_signatures=dispositioned_signatures,
         score=score,
+        threshold=threshold,
+        verdict=verdict,
+        coverage_status=engine.coverage_status.value,
+        confidence=engine.confidence.value,
+        validator_results=[
+            {key: value for key, value in status.to_dict().items() if key != "duration_ms"}
+            for status in engine.validator_statuses
+        ],
+        coverage_gaps=[gap.to_dict() for gap in engine.coverage_gaps],
     )
 
     from verdx import __version__
@@ -118,6 +127,7 @@ def translate_assessment(
             "profile": profile,
             "timestamp": engine.timestamp,
             "verdx_version": __version__,
+            "decision_hash_schema": DECISION_HASH_SCHEMA,
             "gate": {
                 "coverage_status": engine.coverage_status.value,
                 "confidence": engine.confidence.value,

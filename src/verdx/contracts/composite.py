@@ -103,9 +103,7 @@ class CompositeGateDecision:
 class CompositeAssessment:
     """Multi-domain assessment with per-domain results and aggregate decision."""
 
-    schema_version: Literal["verdx.composite-assessment.v1"] = (
-        COMPOSITE_ASSESSMENT_SCHEMA_VERSION
-    )
+    schema_version: Literal["verdx.composite-assessment.v1"] = COMPOSITE_ASSESSMENT_SCHEMA_VERSION
     run_id: str = ""
     target_key: str = ""
     target_content_hash: str = ""

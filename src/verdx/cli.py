@@ -16,6 +16,7 @@ from verdx._output import (
     format_json,
     format_text,
 )
+from verdx.acceptance.cli import check_command, replay_command
 from verdx.api import fix as verdx_fix
 from verdx.api import validate as verdx_validate
 from verdx.profiles import PROFILES
@@ -220,6 +221,8 @@ def drive(
 
 
 main.add_command(flywheel)
+main.add_command(check_command)
+main.add_command(replay_command)
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,7 @@
 ```bash
 git clone https://github.com/ostinato-forge/verdx.git
 cd verdx
-uv sync
+uv sync --locked --extra dev
 ```
 
 Run the checks before you open a pull request:
@@ -14,11 +14,21 @@ Run the checks before you open a pull request:
 make check          # lint, typecheck, and tests
 ```
 
+Run the same checks through the acceptance workflow to retain their evidence:
+
+```bash
+uv run verdx check . --output text
+```
+
+This also checks the project documentation. Each attempt stays under
+`.verdx/runs/`. Replay a receipt with `uv run verdx replay PATH/receipt.json`.
+The default policy is [verdx.toml](verdx.toml).
+
 Or individually:
 
 ```bash
-uv run ruff check src/ tests/
-uv run ruff format --check src/ tests/
+uv run ruff check src/ tests/ examples/
+uv run ruff format --check src/ tests/ examples/
 uv run mypy --package verdx
 uv run python -m pytest tests/ -q
 ```
@@ -27,7 +37,14 @@ The coverage floor is 60. New code should keep the suite green and add tests for
 
 ## How verdx is structured
 
-verdx splits two concerns. A gate contributes checks (what to look for) and a scoring policy (what a finding means). The engine runs the checks, scores the findings against the policy, and produces one verdict with a decision hash. The verdict path is deterministic: it never depends on a network call, so the same input always produces the same verdict.
+The acceptance runner executes the commands and domains named in `verdx.toml`.
+Required checks decide acceptance. It saves the policy, input digests, output,
+coverage, and result for offline replay.
+
+The domain engine runs registered validators and scores their findings. Its
+existing public API returns a scored assessment. The acceptance runner uses the
+underlying findings and coverage directly. It does not use a score threshold to
+accept a required domain check.
 
 Gate authors work against `verdx.contracts`, the stable public surface. The engine under `verdx.engine` is internal and is not part of the contract; contract tests enforce that gates never import it.
 

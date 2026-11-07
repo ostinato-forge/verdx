@@ -7,6 +7,10 @@ computes the verdict with the shared gate. No re-suppression, no recompute.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
+import pytest
+
 from tests.contracts.test_models import (
     _make_applied_disposition,
     _make_coverage_gap,
@@ -86,3 +90,47 @@ def test_gate_reasons_surface_when_blocked_on_coverage() -> None:
     assert gate["coverage_status"] == "degraded"
     assert gate["confidence"] == "low"
     assert len(gate["coverage_gaps"]) == 1
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {"coverage_status": CoverageStatus.DEGRADED},
+        {"confidence": AssessmentConfidence.LOW},
+    ],
+)
+def test_opposite_verdicts_have_different_hashes(changed) -> None:
+    engine = _make_run_assessment(
+        observations=(),
+        score=_make_score(overall=95),
+        coverage_status=CoverageStatus.FULL,
+        confidence=AssessmentConfidence.STRONG,
+    )
+    before = translate_assessment(engine, threshold=80, profile="standard")
+    after = translate_assessment(replace(engine, **changed), threshold=80, profile="standard")
+    assert before.verdict == "pass"
+    assert after.verdict == "block"
+    assert before.decision_hash != after.decision_hash
+
+
+def test_threshold_and_checker_version_affect_hash_but_timing_does_not() -> None:
+    engine = _make_run_assessment()
+    before = translate_assessment(engine, threshold=80, profile="standard")
+    stricter = translate_assessment(engine, threshold=99, profile="standard")
+    assert before.decision_hash != stricter.decision_hash
+    status = engine.validator_statuses[0]
+    changed = replace(engine, validator_statuses=(replace(status, validator_version="99"),))
+    assert translate_assessment(changed, threshold=80, profile="standard").decision_hash != (
+        before.decision_hash
+    )
+    retimed = replace(
+        engine,
+        run_id="later",
+        timestamp="later",
+        validator_statuses=tuple(
+            replace(item, duration_ms=item.duration_ms + 100) for item in engine.validator_statuses
+        ),
+    )
+    assert translate_assessment(retimed, threshold=80, profile="standard").decision_hash == (
+        before.decision_hash
+    )
